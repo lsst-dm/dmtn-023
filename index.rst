@@ -60,7 +60,7 @@ Calibration frames are typically stored in a separate data repository, and `ci_h
 
   ln -s $CI_HSC_DIR/CALIB .
 
-This location will automatically searched by pipelines when looking for calibration data.  You can ignore all of the warnings you may see in the logs about failures to find calibration registries in other locations.
+This location will automatically be searched by pipelines when looking for calibration data.  You can ignore all of the warnings you may see in the logs about failures to find calibration registries in other locations.
 
 Some of our processing steps require an external reference catalog, which is currently provided by an ``astrometry_net_data`` package that must be set up using `EUPS`_ (the same system used to set up and declare LSST software versions).  `ci_hsc`_ includes such a package.  Before first use, it must be declared:
 
@@ -253,8 +253,8 @@ LSST's coadd processing pipeline is designed to produce consistent cross-band ca
 
  - We measure again in every band while holding the positions and shapes fixed at the values measured in each object's reference band, using :py:class:`lsst.meas.base.ForcedPhotCoaddTask` (``forcedPhotCoadd.py``).  This produces the ``deepCoadd_forced_src`` dataset, which provides the flux measurements that provide our best estimates of colors.
 
-Because our coadds are not PSF-homogenized, the forced coadd fluxes don't produce consistent colors unless some other form of PSF correction is applied.  The PSF
-In production settings, we use an external catalog of bright stars to set some masks when building coadds, an fluxes and optional CModel fluxes (see :ref:`Enabling Extension Packages <enabling-extension-packages>`) do provide this correction, while other fluxes do not (and the CModel correction is only approximate; it depends on how well the galaxy's morphology can be approximated by a simple model).
+Because our coadds are not PSF-homogenized, the forced coadd fluxes don't produce consistent colors unless some other form of PSF correction is applied.  
+In production settings, we use an external catalog of bright stars to set some masks when building coadds, and optional CModel fluxes (see :ref:`Enabling Extension Packages <enabling-extension-packages>`) do provide this correction, while other fluxes do not (and the CModel correction is only approximate; it depends on how well the galaxy's morphology can be approximated by a simple model).
 
 There is no need to run these tasks independently; the `multiBandDriver.py` script (:py:class:`lsst.pipe.drivers.MultiBandDriverTask`) can be used to run them all in the appropriate order.  This is a :py:class:`lsst.ctrl.pool.BatchParallelTask`, so all of the more sophisticated parallelization options are available.  Before we we run it, however, we'll have to create a small configuration file.
 
