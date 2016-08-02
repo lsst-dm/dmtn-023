@@ -255,14 +255,7 @@ LSST's coadd processing pipeline is designed to produce consistent cross-band ca
 
 Because our coadds are not PSF-homogenized, the forced coadd fluxes don't produce consistent colors unless some other form of PSF correction is applied.  The PSF and optional CModel fluxes (see :ref:`Enabling Extension Packages <enabling-extension-packages>`) do provide this correction, while other fluxes do not (and the CModel correction is only approximate; it depends on how well the galaxy's morphology can be approximated by a simple model).
 
-There is no need to run these tasks independently; the `multiBandDriver.py` script (:py:class:`lsst.pipe.drivers.MultiBandDriverTask`) can be used to run them all in the appropriate order.  This is a :py:class:`lsst.ctrl.pool.BatchParallelTask`, so all of the more sophisticated parallelization options are available.  Before we we run it, however, we'll have to create a small configuration file.
-
-In production settings, we use an external catalog of bright stars to set some masks when building coadds, and when we measure, we use those masks to set flags on the objects.  Since we haven't used that external catalog here, we need to turn off the flag-setting, and that's a bit more complex than we can do on the command line.  Here is the content of the file; save it as ``no-bright-object-mask.py``:
-
-::
-
-  config.measureCoaddSources.measurement.plugins["base_PixelFlags"].masksFpCenter.remove("BRIGHT_OBJECT")
-  config.measureCoaddSources.measurement.plugins["base_PixelFlags"].masksFpAnywhere.remove("BRIGHT_OBJECT")
+There is no need to run these tasks independently; the `multiBandDriver.py` script (:py:class:`lsst.pipe.drivers.MultiBandDriverTask`) can be used to run them all in the appropriate order.  This is a :py:class:`lsst.ctrl.pool.BatchParallelTask`, so all of the more sophisticated parallelization options are available.
 
 .. prompt:: bash
 
