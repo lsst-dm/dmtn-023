@@ -267,7 +267,7 @@ In production settings, we use an external catalog of bright stars to set some m
 .. prompt:: bash
 
   multiBandDriver.py DATA --rerun example2:example3 \
-    --id tract=0 patch=1^1 filter=HSC-R^HSC-I \
+    --id tract=0 patch=1,1 filter=HSC-R^HSC-I \
     --cores=2 -C no-bright-object-mask.py
 
 We've run only the middle patch here.  Because there's so little data here, the outer patches have a lot of area with no valid pixels, and coadd processing will fail if there is too much missing area (unless you set some other configuration options we won't go into here).  You'll also see a lot of warnings about failed measurements even on the middle patch for the same reason.  Because we're only running one patch, we're also only using two cores, as that's the most the script will be able to make use of (because there are two filters).
