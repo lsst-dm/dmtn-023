@@ -187,15 +187,17 @@ Now that we've defined the skymap (formally the ``deepCoadd_skyMap`` data produc
 
   coaddDriver.py DATA --rerun example2 \
     --selectId visit=903334..903338:2 --selectId visit=903342..903346:2 \
-    --id tract=0 patch=1,1 filter=HSC-R --cores=4
+    --id tract=0 patch=1,1 filter=HSC-R --cores=4 \
+    --config assembleCoadd.doApplyUberCal=False makeCoaddTempExp.doApplyUberCal=False
 
 .. prompt:: bash
 
   coaddDriver.py DATA --rerun example2 \
     --selectId visit=903986..903990:2 --selectId visit=904010^904014 \
-    --id tract=0 patch=1,1 filter=HSC-I --cores=4
+    --id tract=0 patch=1,1 filter=HSC-I --cores=4 \
+    --config assembleCoadd.doApplyUberCal=False makeCoaddTempExp.doApplyUberCal=False
 
-Unfortunately, ``coaddDriver.py`` isn't clever enough to realize that a coadd in a particular filter should only use visit images from that filter, so we have to manually split up the visits by filter and run the command twice.  We've used the ``--selectId`` options to specify the input data IDs, and ``--id`` to specify the output data IDs.  It's okay to provide more input data IDs than actually overlap the output patch; the task will automatically filter out non-overlapping CCDs.  Like ``singleFrameDriver.py``, ``coaddDriver.py`` is based on :py:class:`lsst.ctrl.pool.BatchParallelTask`, so we're using ``--cores`` to specify the number of (local) cores to parallelize over.  We've also just used ``--rerun example2`` to specify the rerun; this is now equivalent to ``--rerun example1:example2`` because we've already created the "example2" rerun and declared "example1" as its input (once a data repository is created in a chain, it cannot be disassociated from that chain).
+(The ``--config`` arguments are necessary because this tutorial does not include running the ``UberCal`` step, which is turned on by default for ``obs_subaru``.) Unfortunately, ``coaddDriver.py`` isn't clever enough to realize that a coadd in a particular filter should only use visit images from that filter, so we have to manually split up the visits by filter and run the command twice.  We've used the ``--selectId`` options to specify the input data IDs, and ``--id`` to specify the output data IDs.  It's okay to provide more input data IDs than actually overlap the output patch; the task will automatically filter out non-overlapping CCDs.  Like ``singleFrameDriver.py``, ``coaddDriver.py`` is based on :py:class:`lsst.ctrl.pool.BatchParallelTask`, so we're using ``--cores`` to specify the number of (local) cores to parallelize over.  We've also just used ``--rerun example2`` to specify the rerun; this is now equivalent to ``--rerun example1:example2`` because we've already created the "example2" rerun and declared "example1" as its input (once a data repository is created in a chain, it cannot be disassociated from that chain).
 
 We can process multiple patches at once, but there's no nice ``--id`` syntax for specifying multiple adjacent patches; we have to use ``^``, which is a bit verbose and hard to read.  Here are the command-lines for processing the other 8 patches:
 
