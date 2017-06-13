@@ -62,18 +62,15 @@ Calibration frames are typically stored in a separate data repository, and `ci_h
 
 This location will automatically be searched by pipelines when looking for calibration data.  You can ignore all of the warnings you may see in the logs about failures to find calibration registries in other locations.
 
-Some of our processing steps require an external reference catalog, which is currently provided by an ``astrometry_net_data`` package that must be set up using `EUPS`_ (the same system used to set up and declare LSST software versions).  `ci_hsc`_ includes such a package.  Before first use, it must be declared:
+Some of our processing steps require an external reference catalog, which we store as a set of FITS files sharded by their Hierarchical Triangular Mesh indices :cite:`2001misk.conf..631K`.  The `ci_hsc`_ package already contains the subset of the Pan-STARRS PV3 catalog :cite:`2016arXiv161205560C` that overlaps the data in the package, and we just need to link it into a ``ref_cats`` subdirectory of the data repository:
 
 .. prompt:: bash
 
-  eups declare astrometry_net_data sdss-dr9-fink-v5b+ci_hsc \
-    -m none -r $CI_HSC_DIR/sdss-dr9-fink-v5b
+  mkdir ref_cats
+  cd ref_cats
+  ln -s $CI_HSC_DIR/ps1_pv3_3pi_20170110 .
 
-and then (like any `EUPS`_ product) it must set up every time you open a new shell:
-
-.. prompt:: bash
-
-  setup astrometry_net_data sdss-dr9-fink-v5b+ci_hsc
+The ``ref_cats`` subdirectory can hold multiple catalogs, and there are configuration parameters to control which catalog is used at different points in the processing.
 
 When we run pipelines, the outputs will go into a new data repository we call a *rerun*.  By default, reruns are created in a ``rerun/<rerun-name>`` subdirectory of the original data repository.  Reruns can be chained -- a rerun from an early stage of processing may be used as the input data repository for another stage.
 
@@ -371,3 +368,9 @@ Clobbering and Skipping Outputs
 Some command-line tasks (especially the ``*Driver.py`` tasks) test whether a data product exists in the current rerun chain, and skip any processing that would be replace it.  This is exactly the behavior desired when a large job dies unexpected and you want to resume it.  But it can be very confusing when you actually want to re-do the processing (especially the fact that processing is skipped if the output data product appears anywhere in the rerun *chain*, not just the last rerun in the chain -- this is another behavior we plan to change in the future).
 
 Tasks with this behavior have configuration parameters to disable it, usually with names with words like "overwrite", "clobber", or "skip".  Because these are configuration parameters (not normal command-line options), changing them and then restarting processing in the same rerun will trigger an error of the type described in the :ref:`previous section <configuration-and-software-version-changes>`.
+
+
+References
+==========
+
+.. bibliography:: dmtn-023.bib
