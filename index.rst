@@ -109,6 +109,11 @@ Most of the work in ``singleFrameDriver.py`` is delegated to :py:class:`lsst.pip
 
 You'll note that we've included the CCD part of the data ID here, and we've passed two CCD IDs, separated by a ``^``.  We've also replaced the ``--cores=4`` argument with ``-j2``.  :py:class:`lsst.pipe.tasks.ProcessCcdTask` doesn't inherit from :py:class:`lsst.ctrl.pool.BatchParallelTask`, so it doesn't have the more sophisticated parallelization and batch submission features.  But you can still parallelize over multiple local cores by specifying the number with ``-j``.
 
+.. warning::
+
+  Recent versions of the pipeline (through ``w.2017.23``) contain a bug that can cause lower-level command-line tasks like ``processCcd.py`` to hang when the number of data units exceeds the number of cores passed with ``-j`` *and* the number of cores to be used is greater than one.  This bug does not affect the higher-level :py:class:`BatchParallelTask`, which are generally a better choice for large-scale processing anyway.
+
+
 Exposure-level processing includes doing basic detrending (:abbr:`ISR (Instrument Signature Removal)`), PSF determination, cosmic ray detection and interpolation, WCS and magnitude zeropoint fitting, and basic detection, deblending, and measurement.  It produces two main data products:
 
 ``calexp``
