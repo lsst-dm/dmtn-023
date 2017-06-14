@@ -187,7 +187,7 @@ Now that we've defined the skymap (formally the ``deepCoadd_skyMap`` data produc
 
 .. prompt:: bash
 
-  coaddDriver.py DATA --rerun example2 \
+  coaddDriver.py DATA --rerun example1:example2 \
     --selectId visit=903334..903338:2 --selectId visit=903342..903346:2 \
     --id tract=0 patch=1,1 filter=HSC-R --cores=4 \
     --config assembleCoadd.doApplyUberCal=False \
@@ -195,7 +195,7 @@ Now that we've defined the skymap (formally the ``deepCoadd_skyMap`` data produc
 
 .. prompt:: bash
 
-  coaddDriver.py DATA --rerun example2 \
+  coaddDriver.py DATA --rerun example1:example2 \
     --selectId visit=903986..903990:2 --selectId visit=904010^904014 \
     --id tract=0 patch=1,1 filter=HSC-I --cores=4 \
     --config assembleCoadd.doApplyUberCal=False \
@@ -205,25 +205,29 @@ Now that we've defined the skymap (formally the ``deepCoadd_skyMap`` data produc
 
   The `--config` arguments here are necessary because the default configuration of `obs_subaru` requires the "ubercal" step---currently `meas_mosaic`---to have been run before creating the coadds.  However, in this tutorial, the "ubercal" step has not been run, so those results don't exist and thus cannot be used.
 
+.. warning::
+
+  It should be possible to just pass ``--rerun example2`` here instead of ``--rerun example1:example2``, because ``example2`` should already be chained to ``example1`` from the previous step.  A bug in the pipeline ([DM-10340](https://jira.lsstcorp.org/browse/DM-10340) present through at least ``w.2017.23``) currently prevents the simpler syntax from working.
+
 Unfortunately, ``coaddDriver.py`` isn't clever enough to realize that a coadd in a particular filter should only use visit images from that filter, so we have to manually split up the visits by filter and run the command twice.  We've used the ``--selectId`` options to specify the input data IDs, and ``--id`` to specify the output data IDs.  It's okay to provide more input data IDs than actually overlap the output patch; the task will automatically filter out non-overlapping CCDs.  Like ``singleFrameDriver.py``, ``coaddDriver.py`` is based on :py:class:`lsst.ctrl.pool.BatchParallelTask`, so we're using ``--cores`` to specify the number of (local) cores to parallelize over.  We've also just used ``--rerun example2`` to specify the rerun; this is now equivalent to ``--rerun example1:example2`` because we've already created the "example2" rerun and declared "example1" as its input (once a data repository is created in a chain, it cannot be disassociated from that chain).
 
 We can process multiple patches at once, but there's no nice ``--id`` syntax for specifying multiple adjacent patches; we have to use ``^``, which is a bit verbose and hard to read.  Here are the command-lines for processing the other 8 patches:
 
 .. prompt:: bash
 
-  coaddDriver.py DATA --rerun example2 \
+  coaddDriver.py DATA --rerun example1:example2 \
     --selectId visit=903334..903338:2 --selectId visit=903342..903346:2 \
     --id tract=0 patch=0,0^0,1^0,2^1,0^1,2^2,0^2,1^2,2 filter=HSC-R \
     --cores=4
 
 .. prompt:: bash
 
-  coaddDriver.py DATA --rerun example2 \
+  coaddDriver.py DATA --rerun example1:example2 \
     --selectId visit=903986..903990:2 --selectId visit=904010^904014 \
     --id tract=0 patch=0,0^0,1^0,2^1,0^1,2^2,0^2,1^2,2 filter=HSC-I \
     --cores=4
 
-``coaddDriver.py`` delegates most of its work to :py:class:`lsst.pipe.tasks.MakeCoaddTempExpTask`, :py:class:`lsst.pipe.tasks.SafeClipAssembleCoadd`, and :py:class:`lsst.pipe.tasks.DetectCoaddSourcesTask`, which each have their own scripts (``makeCoaddTempExp.py``, ``assembleCoadd.py``, and ``detectCoaddSources.py``, respectively), and like :py:class:`lsst.pipe.tasks.ProcessCcdTask`, only support simple ``-j`` parallelization.  The first of these builds the ``deepCoadd_tempExp`` data product, which is a resampled image in the tract coordinate system for every patch/visit combination.  The second combines these into the coadd images themselves.  The third actually starts the process of detecting sources on the coadds; while this step fits better conceptually in :ref:`Multi-Band Coadd Processing <multiband-coadd-processing>`, it actually modifies the coadd images themselves (by subtracting the background and setting a mask bit to indicate detections).  So we do detection as part of coaddition to allow us to only write one set of coadd images, and to do so only once (though both sets of images are written by default).
+``coaddDriver.py`` delegates most of its work to :py:class:`lsst.pipe.tasks.MakeCoaddTempExpTask`, :py:class:`lsst.pipe.tasks.SafeClipAssembleCoadd`, and :py:class:`lsst.pipe.tasks.DetectCoaddSourcesTask`, which each have their own scripts (``makeCoaddTempExp.py``, ``assembleCoadd.py``, and ``detectCoaddSources.py``, respectively), and like :py:class:`lsst.pipe.tasks.ProcessCcdTask`, only support simple ``-j`` parallelization.  The first of these builds the ``deepCoadd_directWarp`` data product, which is a resampled image in the tract coordinate system for every patch/visit combination.  The second combines these into the coadd images themselves.  The third actually starts the process of detecting sources on the coadds; while this step fits better conceptually in :ref:`Multi-Band Coadd Processing <multiband-coadd-processing>`, it actually modifies the coadd images themselves (by subtracting the background and setting a mask bit to indicate detections).  So we do detection as part of coaddition to allow us to only write one set of coadd images, and to do so only once (though both sets of images are written by default).
 
 There are a few features of our coadds that are worth pointing briefly here:
 
