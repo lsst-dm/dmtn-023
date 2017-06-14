@@ -99,7 +99,7 @@ The other arguments here are common to all command-line tasks:
 
  - We use the ``--id`` argment to pass *data IDs* that indicate which data to process.  There's a fairly complex syntax for specifying multiple data IDs in one ``--id`` argument that we'll touch on later, but you can always also just use the ``--id`` option multiple times.  Different instruments also have different data IDs for specifying raw data.  HSC and CFHT use ``{visit,ccd}``, for instance, while LSST uses ``{visit,raft,sensor}``.
 
-``singleFrameDriver.py`` always processes full visits, which is why we've left off the CCD part of the data ID (actually, it processes as many of the CCDs in a visit that it can find in the registry -- you'll note that `ci_hsc`_ doesn't include them all).
+By leaving off the CCD part of the data ID, we've told ``singleFrameDriver.py`` to process as many of the CCDs in the visit that it can find in the registry -- you'll note that `ci_hsc`_ doesn't include them all.
 
 Most of the work in ``singleFrameDriver.py`` is delegated to :py:class:`lsst.pipe.tasks.ProcessCcdTask`, which has its own command-line script, ``processCcd.py``.  You can call this directly if you just want to process a CCD or two:
 
