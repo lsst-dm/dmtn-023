@@ -334,15 +334,13 @@ We can then use the ``get`` method to extract any of the data products we've pro
 
 ::
 
-  calexp = butler.get("calexp", visit=903334, ccd=16, immediate=True)
-  src = butler.get("src", visit=903334, ccd=16, immediate=True)
-  skyMap = butler.get("deepCoadd_skyMap", immediate=True)
-  coadd = butler.get("deepCoadd_calexp", tract=0, patch="1,1", filter="HSC-I", immediate=True)
-  meas = butler.get("deepCoadd_meas", tract=0, patch="1,1", filter="HSC-I", immediate=True)
+  calexp = butler.get("calexp", visit=903334, ccd=16)
+  src = butler.get("src", visit=903334, ccd=16)
+  skyMap = butler.get("deepCoadd_skyMap")
+  coadd = butler.get("deepCoadd_calexp", tract=0, patch="1,1", filter="HSC-I")
+  meas = butler.get("deepCoadd_meas", tract=0, patch="1,1", filter="HSC-I")
 
 Even though some of these are in the "example1" or "example2" rerun, we can access them all through a single butler initialized to the "example3" root.
-
-We've passed ``immediate=True`` to all of these to tell the butler to read and return objects immediately; if we don't, it'll return a lazy-I/O proxy that mostly behaves like the object it points at, but can occasionally be a little confusing (especially in terms of introspection).
 
 We can also use the butler to get the filename of a data product by appending "_filename" to the data product name, in case we actually do need to manipulate the filesystem directly:
 
