@@ -235,7 +235,7 @@ There are a few features of our coadds that are worth pointing briefly here:
 
 The data products produced by coaddition are:
 
-``deepCoadd_tempExp``
+``deepCoadd_directWarp``
   Resampled images for every patch/visit combination.  These may be deleted after coadds are built to save space.  This is one of the few operations where direct filesystem operations are necessary, however -- there's no way to delete files with the butler yet.
 
 ``deepCoadd_calexp``
@@ -344,7 +344,7 @@ We can also use the butler to get the filename of a data product by appending "_
 
 ::
 
-  filename = butler.get("deepCoadd_tempExp_filename", visit=903334, tract=0, patch="1,1")[0]
+  filename = butler.get("deepCoadd_directWarp_filename", visit=903334, tract=0, patch="1,1")[0]
 
 Note that getting a ``*_filename`` data product actually returns a single-element list (in the future, some data products may be split across multiple files, though none currently are).
 
