@@ -20,18 +20,18 @@ authors:
     - 'Jim Bosch'
 
 # Current document version
-last_revised: '2016-06-21'
+last_revised: '2017-06-13'
 
 # Version. Use Semvar, e.g., 1.0, including .dev, as necessary
 # This version string should correspond to the git tag when the document is published on Zenodo
-version: '1.0'
+version: '1.1'
 
 # Digital Object Identifier (DOI). Uncomment if available.
 # Keep this DOI updated as new releases are pushed to Zenodo
 # doi: 10.5281/zenodo.#####
 
 # Copyright statement
-copyright: '2016, AURA/LSST'
+copyright: '2016-2017, AURA/LSST'
 
 # Description. A short, 1-2 sentence statemement used by document indices.
 description: 'A brief tutorial on using the main LSST command-line processing tasks.'

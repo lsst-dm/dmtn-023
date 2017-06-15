@@ -62,18 +62,15 @@ Calibration frames are typically stored in a separate data repository, and `ci_h
 
 This location will automatically be searched by pipelines when looking for calibration data.  You can ignore all of the warnings you may see in the logs about failures to find calibration registries in other locations.
 
-Some of our processing steps require an external reference catalog, which is currently provided by an ``astrometry_net_data`` package that must be set up using `EUPS`_ (the same system used to set up and declare LSST software versions).  `ci_hsc`_ includes such a package.  Before first use, it must be declared:
+Some of our processing steps require an external reference catalog, which we store as a set of FITS files sharded by their Hierarchical Triangular Mesh indices :cite:`2001misk.conf..631K`.  The `ci_hsc`_ package already contains the subset of the Pan-STARRS PV3 catalog :cite:`2016arXiv161205560C` that overlaps the data in the package, and we just need to link it into a ``ref_cats`` subdirectory of the data repository:
 
 .. prompt:: bash
 
-  eups declare astrometry_net_data sdss-dr9-fink-v5b+ci_hsc \
-    -m none -r $CI_HSC_DIR/sdss-dr9-fink-v5b
+  mkdir ref_cats
+  cd ref_cats
+  ln -s $CI_HSC_DIR/ps1_pv3_3pi_20170110 .
 
-and then (like any `EUPS`_ product) it must set up every time you open a new shell:
-
-.. prompt:: bash
-
-  setup astrometry_net_data sdss-dr9-fink-v5b+ci_hsc
+The ``ref_cats`` subdirectory can hold multiple catalogs, and there are configuration parameters to control which catalog is used at different points in the processing.
 
 When we run pipelines, the outputs will go into a new data repository we call a *rerun*.  By default, reruns are created in a ``rerun/<rerun-name>`` subdirectory of the original data repository.  Reruns can be chained -- a rerun from an early stage of processing may be used as the input data repository for another stage.
 
@@ -102,7 +99,7 @@ The other arguments here are common to all command-line tasks:
 
  - We use the ``--id`` argment to pass *data IDs* that indicate which data to process.  There's a fairly complex syntax for specifying multiple data IDs in one ``--id`` argument that we'll touch on later, but you can always also just use the ``--id`` option multiple times.  Different instruments also have different data IDs for specifying raw data.  HSC and CFHT use ``{visit,ccd}``, for instance, while LSST uses ``{visit,raft,sensor}``.
 
-``singleFrameDriver.py`` always processes full visits, which is why we've left off the CCD part of the data ID (actually, it processes as many of the CCDs in a visit that it can find in the registry -- you'll note that `ci_hsc`_ doesn't include them all).
+By leaving off the CCD part of the data ID, we've told ``singleFrameDriver.py`` to process as many of the CCDs in the visit that it can find in the registry -- you'll note that `ci_hsc`_ doesn't include them all.
 
 Most of the work in ``singleFrameDriver.py`` is delegated to :py:class:`lsst.pipe.tasks.ProcessCcdTask`, which has its own command-line script, ``processCcd.py``.  You can call this directly if you just want to process a CCD or two:
 
@@ -111,6 +108,11 @@ Most of the work in ``singleFrameDriver.py`` is delegated to :py:class:`lsst.pip
   processCcd.py DATA --rerun example1b --id visit=903334 ccd=16^100 -j2
 
 You'll note that we've included the CCD part of the data ID here, and we've passed two CCD IDs, separated by a ``^``.  We've also replaced the ``--cores=4`` argument with ``-j2``.  :py:class:`lsst.pipe.tasks.ProcessCcdTask` doesn't inherit from :py:class:`lsst.ctrl.pool.BatchParallelTask`, so it doesn't have the more sophisticated parallelization and batch submission features.  But you can still parallelize over multiple local cores by specifying the number with ``-j``.
+
+.. warning::
+
+  Recent versions of the pipeline (through ``w.2017.23``) contain a bug that can cause lower-level command-line tasks like ``processCcd.py`` to hang when the number of data units exceeds the number of cores passed with ``-j`` *and* the number of cores to be used is greater than one.  This bug does not affect the higher-level :py:class:`BatchParallelTask`, which are generally a better choice for large-scale processing anyway.
+
 
 Exposure-level processing includes doing basic detrending (:abbr:`ISR (Instrument Signature Removal)`), PSF determination, cosmic ray detection and interpolation, WCS and magnitude zeropoint fitting, and basic detection, deblending, and measurement.  It produces two main data products:
 
@@ -185,7 +187,7 @@ Now that we've defined the skymap (formally the ``deepCoadd_skyMap`` data produc
 
 .. prompt:: bash
 
-  coaddDriver.py DATA --rerun example2 \
+  coaddDriver.py DATA --rerun example1:example2 \
     --selectId visit=903334..903338:2 --selectId visit=903342..903346:2 \
     --id tract=0 patch=1,1 filter=HSC-R --cores=4 \
     --config assembleCoadd.doApplyUberCal=False \
@@ -193,7 +195,7 @@ Now that we've defined the skymap (formally the ``deepCoadd_skyMap`` data produc
 
 .. prompt:: bash
 
-  coaddDriver.py DATA --rerun example2 \
+  coaddDriver.py DATA --rerun example1:example2 \
     --selectId visit=903986..903990:2 --selectId visit=904010^904014 \
     --id tract=0 patch=1,1 filter=HSC-I --cores=4 \
     --config assembleCoadd.doApplyUberCal=False \
@@ -203,25 +205,29 @@ Now that we've defined the skymap (formally the ``deepCoadd_skyMap`` data produc
 
   The `--config` arguments here are necessary because the default configuration of `obs_subaru` requires the "ubercal" step---currently `meas_mosaic`---to have been run before creating the coadds.  However, in this tutorial, the "ubercal" step has not been run, so those results don't exist and thus cannot be used.
 
+.. warning::
+
+  It should be possible to just pass ``--rerun example2`` here instead of ``--rerun example1:example2``, because ``example2`` should already be chained to ``example1`` from the previous step.  A bug in the pipeline ([DM-10340](https://jira.lsstcorp.org/browse/DM-10340) present through at least ``w.2017.23``) currently prevents the simpler syntax from working.
+
 Unfortunately, ``coaddDriver.py`` isn't clever enough to realize that a coadd in a particular filter should only use visit images from that filter, so we have to manually split up the visits by filter and run the command twice.  We've used the ``--selectId`` options to specify the input data IDs, and ``--id`` to specify the output data IDs.  It's okay to provide more input data IDs than actually overlap the output patch; the task will automatically filter out non-overlapping CCDs.  Like ``singleFrameDriver.py``, ``coaddDriver.py`` is based on :py:class:`lsst.ctrl.pool.BatchParallelTask`, so we're using ``--cores`` to specify the number of (local) cores to parallelize over.  We've also just used ``--rerun example2`` to specify the rerun; this is now equivalent to ``--rerun example1:example2`` because we've already created the "example2" rerun and declared "example1" as its input (once a data repository is created in a chain, it cannot be disassociated from that chain).
 
 We can process multiple patches at once, but there's no nice ``--id`` syntax for specifying multiple adjacent patches; we have to use ``^``, which is a bit verbose and hard to read.  Here are the command-lines for processing the other 8 patches:
 
 .. prompt:: bash
 
-  coaddDriver.py DATA --rerun example2 \
+  coaddDriver.py DATA --rerun example1:example2 \
     --selectId visit=903334..903338:2 --selectId visit=903342..903346:2 \
     --id tract=0 patch=0,0^0,1^0,2^1,0^1,2^2,0^2,1^2,2 filter=HSC-R \
     --cores=4
 
 .. prompt:: bash
 
-  coaddDriver.py DATA --rerun example2 \
+  coaddDriver.py DATA --rerun example1:example2 \
     --selectId visit=903986..903990:2 --selectId visit=904010^904014 \
     --id tract=0 patch=0,0^0,1^0,2^1,0^1,2^2,0^2,1^2,2 filter=HSC-I \
     --cores=4
 
-``coaddDriver.py`` delegates most of its work to :py:class:`lsst.pipe.tasks.MakeCoaddTempExpTask`, :py:class:`lsst.pipe.tasks.SafeClipAssembleCoadd`, and :py:class:`lsst.pipe.tasks.DetectCoaddSourcesTask`, which each have their own scripts (``makeCoaddTempExp.py``, ``assembleCoadd.py``, and ``detectCoaddSources.py``, respectively), and like :py:class:`lsst.pipe.tasks.ProcessCcdTask`, only support simple ``-j`` parallelization.  The first of these builds the ``deepCoadd_tempExp`` data product, which is a resampled image in the tract coordinate system for every patch/visit combination.  The second combines these into the coadd images themselves.  The third actually starts the process of detecting sources on the coadds; while this step fits better conceptually in :ref:`Multi-Band Coadd Processing <multiband-coadd-processing>`, it actually modifies the coadd images themselves (by subtracting the background and setting a mask bit to indicate detections).  So we do detection as part of coaddition to allow us to only write one set of coadd images, and to do so only once (though both sets of images are written by default).
+``coaddDriver.py`` delegates most of its work to :py:class:`lsst.pipe.tasks.MakeCoaddTempExpTask`, :py:class:`lsst.pipe.tasks.SafeClipAssembleCoadd`, and :py:class:`lsst.pipe.tasks.DetectCoaddSourcesTask`, which each have their own scripts (``makeCoaddTempExp.py``, ``assembleCoadd.py``, and ``detectCoaddSources.py``, respectively), and like :py:class:`lsst.pipe.tasks.ProcessCcdTask`, only support simple ``-j`` parallelization.  The first of these builds the ``deepCoadd_directWarp`` data product, which is a resampled image in the tract coordinate system for every patch/visit combination.  The second combines these into the coadd images themselves.  The third actually starts the process of detecting sources on the coadds; while this step fits better conceptually in :ref:`Multi-Band Coadd Processing <multiband-coadd-processing>`, it actually modifies the coadd images themselves (by subtracting the background and setting a mask bit to indicate detections).  So we do detection as part of coaddition to allow us to only write one set of coadd images, and to do so only once (though both sets of images are written by default).
 
 There are a few features of our coadds that are worth pointing briefly here:
 
@@ -233,7 +239,7 @@ There are a few features of our coadds that are worth pointing briefly here:
 
 The data products produced by coaddition are:
 
-``deepCoadd_tempExp``
+``deepCoadd_directWarp``
   Resampled images for every patch/visit combination.  These may be deleted after coadds are built to save space.  This is one of the few operations where direct filesystem operations are necessary, however -- there's no way to delete files with the butler yet.
 
 ``deepCoadd_calexp``
@@ -328,21 +334,19 @@ We can then use the ``get`` method to extract any of the data products we've pro
 
 ::
 
-  calexp = butler.get("calexp", visit=903334, ccd=16, immediate=True)
-  src = butler.get("src", visit=903334, ccd=16, immediate=True)
-  skyMap = butler.get("deepCoadd_skyMap", immediate=True)
-  coadd = butler.get("deepCoadd_calexp", tract=0, patch="1,1", filter="HSC-I", immediate=True)
-  meas = butler.get("deepCoadd_meas", tract=0, patch="1,1", filter="HSC-I", immediate=True)
+  calexp = butler.get("calexp", visit=903334, ccd=16)
+  src = butler.get("src", visit=903334, ccd=16)
+  skyMap = butler.get("deepCoadd_skyMap")
+  coadd = butler.get("deepCoadd_calexp", tract=0, patch="1,1", filter="HSC-I")
+  meas = butler.get("deepCoadd_meas", tract=0, patch="1,1", filter="HSC-I")
 
 Even though some of these are in the "example1" or "example2" rerun, we can access them all through a single butler initialized to the "example3" root.
-
-We've passed ``immediate=True`` to all of these to tell the butler to read and return objects immediately; if we don't, it'll return a lazy-I/O proxy that mostly behaves like the object it points at, but can occasionally be a little confusing (especially in terms of introspection).
 
 We can also use the butler to get the filename of a data product by appending "_filename" to the data product name, in case we actually do need to manipulate the filesystem directly:
 
 ::
 
-  filename = butler.get("deepCoadd_tempExp_filename", visit=903334, tract=0, patch="1,1")[0]
+  filename = butler.get("deepCoadd_directWarp_filename", visit=903334, tract=0, patch="1,1")[0]
 
 Note that getting a ``*_filename`` data product actually returns a single-element list (in the future, some data products may be split across multiple files, though none currently are).
 
@@ -371,3 +375,9 @@ Clobbering and Skipping Outputs
 Some command-line tasks (especially the ``*Driver.py`` tasks) test whether a data product exists in the current rerun chain, and skip any processing that would be replace it.  This is exactly the behavior desired when a large job dies unexpected and you want to resume it.  But it can be very confusing when you actually want to re-do the processing (especially the fact that processing is skipped if the output data product appears anywhere in the rerun *chain*, not just the last rerun in the chain -- this is another behavior we plan to change in the future).
 
 Tasks with this behavior have configuration parameters to disable it, usually with names with words like "overwrite", "clobber", or "skip".  Because these are configuration parameters (not normal command-line options), changing them and then restarting processing in the same rerun will trigger an error of the type described in the :ref:`previous section <configuration-and-software-version-changes>`.
+
+
+References
+==========
+
+.. bibliography:: dmtn-023.bib
